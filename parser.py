@@ -9,52 +9,56 @@ def parse_textbook(text_path, output_path):
     current_section = None
     paragraph_buffer = []
 
-    # Regex to detect valid hierarchical section headers like "1", "1.2", "1.2.3"
-    section_pattern = re.compile(r'^(\d+(?:\.\d+)*)(\s+)(.+)')
+    # Patterns
+    chapter_pattern = re.compile(r'^Chapter\s+(\d+)\b')
+    section_pattern = re.compile(r'^(\d+\.\d+)\b')
 
-    # Function to clean and save a paragraph under a section
     def flush_paragraph(section, buffer):
         paragraph = ' '.join([line.strip() for line in buffer]).strip()
-        if paragraph and re.match(r'^\d+(\.\d+)*$', section):  # Ensure it's a valid section id
+        if paragraph and section:
             data.append({"section_id": section, "paragraph": paragraph})
-
-    # Define a list of keywords or phrases to filter out non-content noise
-    noise_phrases = [
-        "Online edition", "List of Tables", "Author Index", "Bibliography",
-        "Cambridge University Press", "©", "copyright", "feedback welcome"
-    ]
 
     for line in lines:
         stripped = line.strip()
 
-        # Skip noise lines
-        if any(noise.lower() in stripped.lower() for noise in noise_phrases):
+        # Skip empty header/footer artifacts
+        if any(bad in stripped.lower() for bad in ["copyright", "green tea press", "http", "license"]):
             continue
 
-        # Check for section header
-        match = section_pattern.match(line)
-        if match:
+        # Check for chapter
+        chap_match = chapter_pattern.match(stripped)
+        if chap_match:
             if paragraph_buffer and current_section:
                 flush_paragraph(current_section, paragraph_buffer)
                 paragraph_buffer = []
+            current_section = chap_match.group(1)  # e.g., "1"
+            continue
 
-            current_section = match.group(1)  # Only the numeric part like "1.2.3"
+        # Check for section like 1.1, 1.2
+        sec_match = section_pattern.match(stripped)
+        if sec_match:
+            if paragraph_buffer and current_section:
+                flush_paragraph(current_section, paragraph_buffer)
+                paragraph_buffer = []
+            current_section = sec_match.group(1)  # e.g., "1.2"
+            continue
+
+        # Paragraph logic
+        if stripped == "":
+            if paragraph_buffer and current_section:
+                flush_paragraph(current_section, paragraph_buffer)
+                paragraph_buffer = []
         else:
-            if stripped == '':
-                if paragraph_buffer and current_section:
-                    flush_paragraph(current_section, paragraph_buffer)
-                    paragraph_buffer = []
-            else:
-                paragraph_buffer.append(line)
+            paragraph_buffer.append(line)
 
+    # Flush final paragraph
     if paragraph_buffer and current_section:
         flush_paragraph(current_section, paragraph_buffer)
 
-    # Save to JSON
     with open(output_path, 'w', encoding='utf-8') as out_f:
         json.dump(data, out_f, ensure_ascii=False, indent=2)
 
-    print(f"✅ Parsed {len(data)} clean paragraphs with valid section IDs saved to '{output_path}'")
+    print(f"✅ Parsed {len(data)} paragraphs with section IDs into '{output_path}'")
 
 if __name__ == "__main__":
-    parse_textbook("/home/helena/text_mining/textbook_plain.txt", "structured_textbook.json")
+    parse_textbook("/home/helena/text_mining/textbook_plain.txt", "structured_thinkpython.json")

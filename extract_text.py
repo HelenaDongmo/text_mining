@@ -18,11 +18,11 @@ def clean_text(text):
     return text.strip()
 
 if __name__ == "__main__":
-    pdf_file = "/home/helena/text_mining/irbookonlinereading.pdf"
+    pdf_file = "/home/helena/text_mining/thinkpython.pdf"
     raw_text = extract_text_from_pdf(pdf_file)
     cleaned_text = clean_text(raw_text)
 
-    with open("textbook_plain.txt", "w", encoding="utf-8") as f:
+    with open("/home/helena/text_mining/textbook_plain.txt", "w", encoding="utf-8") as f:
         f.write(cleaned_text)
 
     print("✅ Text extracted and saved to 'textbook_plain.txt'")
